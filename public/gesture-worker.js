@@ -2,10 +2,10 @@ let recognizer;
 self.onmessage = async ({ data }) => {
   try {
     if (data.type === 'init') {
-      const { FilesetResolver, GestureRecognizer } = await import('https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.21/vision_bundle.mjs');
-      const vision = await FilesetResolver.forVisionTasks('https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.21/wasm');
+      const { FilesetResolver, GestureRecognizer } = await import('/vision/vision_bundle.mjs');
+      const vision = await FilesetResolver.forVisionTasks('/vision/wasm');
       recognizer = await GestureRecognizer.createFromOptions(vision, {
-        baseOptions: { modelAssetPath: 'https://storage.googleapis.com/mediapipe-models/gesture_recognizer/gesture_recognizer/float16/1/gesture_recognizer.task', delegate: 'CPU' },
+        baseOptions: { modelAssetPath: '/models/gesture_recognizer.task', delegate: 'CPU' },
         runningMode: 'VIDEO', numHands: 1, minHandDetectionConfidence: 0.6, minHandPresenceConfidence: 0.6, minTrackingConfidence: 0.6,
       });
       self.postMessage({ type: 'ready' });
