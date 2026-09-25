@@ -11,14 +11,15 @@ export default function Home() {
   const [overlay, setOverlay] = useState(true);
   const [help, setHelp] = useState(false);
   const video = useRef<HTMLVideoElement>(null), canvas = useRef<HTMLCanvasElement>(null), surface = useRef<HTMLDivElement>(null);
-  const stream = useRef<MediaStream | null>(null), worker = useRef<Worker | null>(null);
+  const stream = useRef<MediaStream | null>(null);
+  const recognizer = useRef<{ close?: () => void; recognizeForVideo: (video: HTMLVideoElement, time: number) => { landmarks: { x: number; y: number }[][]; gestures: { categoryName: string; score: number }[][] } } | null>(null);
   const generation = useRef(0), timer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const stable = useRef({ value: '', count: 0 }), current = useRef(reading);
   current.current = reading;
   function release() {
     generation.current++;
     if (timer.current) clearTimeout(timer.current);
-    worker.current?.terminate(); worker.current = null;
+    recognizer.current?.close?.(); recognizer.current = null;
     stream.current?.getTracks().forEach(t => t.stop()); stream.current = null;
     if (video.current) video.current.srcObject = null;
     stable.current = { value: '', count: 0 };
@@ -53,27 +54,34 @@ export default function Home() {
       stream.current = media; media.getVideoTracks()[0].onended = () => fail('ارتباط دوربین قطع شد. دوباره شروع کنید.');
       video.current!.srcObject = media; await video.current!.play(); if (id !== generation.current) return;
       canvas.current!.width = video.current!.videoWidth; canvas.current!.height = video.current!.videoHeight;
-      const task = new Worker('/gesture-worker.js', { type: 'module' }); worker.current = task;
       const timeout = setTimeout(() => fail('بارگیری مدل طول کشید. اتصال اینترنت را بررسی کنید و دوباره تلاش کنید.'), 60000); timer.current = timeout;
-      const frame = async () => {
-        if (id !== generation.current || !video.current) return;
-        try { const bitmap = await createImageBitmap(video.current); if (id !== generation.current) { bitmap.close(); return; } task.postMessage({ type: 'frame', bitmap, time: performance.now() }, [bitmap]); }
-        catch { fail('پردازش تصویر در این مرورگر انجام نشد. با نسخهٔ جدید Chrome یا Edge امتحان کنید.'); }
+      const moduleUrl = new URL('/vision/vision_bundle.mjs', window.location.href).href;
+      const wasmUrl = new URL('/vision/wasm', window.location.href).href;
+      const modelUrl = new URL('/models/gesture_recognizer.task', window.location.href).href;
+      const { FilesetResolver, GestureRecognizer } = await import(/* @vite-ignore */ moduleUrl);
+      const vision = await FilesetResolver.forVisionTasks(wasmUrl);
+      recognizer.current = await GestureRecognizer.createFromOptions(vision, {
+        baseOptions: { modelAssetPath: modelUrl, delegate: 'CPU' },
+        runningMode: 'VIDEO', numHands: 1, minHandDetectionConfidence: 0.6, minHandPresenceConfidence: 0.6, minTrackingConfidence: 0.6,
+      });
+      if (id !== generation.current) return;
+      clearTimeout(timeout); setPhase('running'); setReading({ state: 'none', score: 0, points: [] });
+      const frame = () => {
+        if (id !== generation.current || !video.current || !recognizer.current) return;
+        try {
+          const result = recognizer.current.recognizeForVideo(video.current, performance.now());
+          const points = result.landmarks[0] || [], gesture = result.gestures[0]?.[0];
+          let value = points.length ? 'other' : 'none';
+          if (points.length && gesture?.score >= 0.65) { if (gesture.categoryName === 'Open_Palm') value = 'open'; if (gesture.categoryName === 'Closed_Fist') value = 'closed'; }
+          stable.current = { value, count: value === stable.current.value ? stable.current.count + 1 : 1 };
+          setReading(prev => ({ state: value === 'none' || stable.current.count >= 3 ? value : prev.state, score: value === 'none' ? 0 : (value === prev.state || stable.current.count >= 3 ? gesture?.score || 0 : 0), points }));
+          timer.current = setTimeout(frame, 75);
+        } catch (error) { fail(`پردازش تصویر انجام نشد: ${(error as Error).message || 'خطای ناشناخته'}`); }
       };
-      task.onerror = () => fail('مدل تشخیص بارگیری نشد. اتصال اینترنت را بررسی کنید و دوباره تلاش کنید.');
-      task.onmessage = (event) => {
-        if (id !== generation.current) return; const data = event.data;
-        if (data.type === 'ready') { clearTimeout(timeout); setPhase('running'); setReading({ state: 'none', score: 0, points: [] }); void frame(); }
-        else if (data.type === 'error') fail('مدل تشخیص آماده نشد. اینترنت را بررسی کنید یا مرورگر را به‌روز کنید.');
-        else if (data.type === 'result') {
-          const value = data.state; stable.current = { value, count: value === stable.current.value ? stable.current.count + 1 : 1 };
-          setReading(prev => ({ state: value === 'none' || stable.current.count >= 3 ? value : prev.state, score: value === 'none' ? 0 : (value === prev.state || stable.current.count >= 3 ? data.score : 0), points: data.points }));
-          timer.current = setTimeout(() => void frame(), 65);
-        }
-      }; task.postMessage({ type: 'init' });
+      frame();
     } catch (error) {
       const name = (error as Error).name;
-      fail(name === 'NotAllowedError' ? 'اجازهٔ دوربین داده نشد. از تنظیمات کنار آدرس سایت، دسترسی دوربین را فعال کنید.' : name === 'NotFoundError' ? 'دوربینی پیدا نشد. اتصال دوربین دستگاه را بررسی کنید.' : name === 'NotReadableError' ? 'دوربین در برنامهٔ دیگری مشغول است. آن برنامه را ببندید و دوباره امتحان کنید.' : (error as Error).message === 'secure' ? 'برای دسترسی به دوربین، سایت را با HTTPS یا localhost باز کنید.' : 'دوربین راه‌اندازی نشد. دسترسی مرورگر و اتصال دوربین را بررسی کنید.');
+      fail(name === 'NotAllowedError' ? 'اجازهٔ دوربین داده نشد. از تنظیمات کنار آدرس سایت، دسترسی دوربین را فعال کنید.' : name === 'NotFoundError' ? 'دوربینی پیدا نشد. اتصال دوربین دستگاه را بررسی کنید.' : name === 'NotReadableError' ? 'دوربین در برنامهٔ دیگری مشغول است. آن برنامه را ببندید و دوباره امتحان کنید.' : (error as Error).message === 'secure' ? 'برای دسترسی به دوربین، سایت را با HTTPS یا localhost باز کنید.' : `مدل تشخیص آماده نشد: ${(error as Error).message || 'خطای ناشناخته'}`);
     }
   }
   const running = phase === 'running', busy = phase === 'loading', recognized = reading.state === 'open' || reading.state === 'closed';
