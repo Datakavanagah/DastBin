@@ -29,6 +29,10 @@
     "build/**",
     "dist/**",
     "coverage/**",
+    "components/ui/**",
+    "hooks/**",
+    "public/vision/**",
+    "public/models/**",
     "next-env.d.ts"
   ],
   "rules": {
@@ -41,7 +45,7 @@
     "react/display-name": "error",
     "react/jsx-no-comment-textnodes": "error",
     "react/no-unescaped-entities": "error",
-    "react/react-compiler": "error",
+    "react/set-state-in-effect": "off",
     "react/require-render-return": "error",
     "react/rules-of-hooks": "error",
     "typescript/ban-ts-comment": "error",

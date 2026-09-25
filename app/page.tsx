@@ -1,8 +1,7 @@
-"use client";
+'use client';
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
-  Activity,
   BarChart3,
   BrainCircuit,
   Camera,
@@ -37,7 +36,8 @@ import {
   Volume2,
   WandSparkles,
   Zap,
-} from "lucide-react";
+} from 'lucide-react';
+import Link from 'next/link';
 import {
   HAND_CONNECTIONS,
   CustomModel,
@@ -51,10 +51,10 @@ import {
   labelForGesture,
   normalizedVector,
   trainCustomModel,
-} from "./hand-vision";
+} from './hand-vision';
 
-type Tab = "live" | "analytics" | "studio" | "roadmap";
-type Phase = "idle" | "loading" | "running" | "error";
+type Tab = 'live' | 'analytics' | 'studio' | 'roadmap';
+type Phase = 'idle' | 'loading' | 'running' | 'error';
 type HistoryItem = {
   id: string;
   time: number;
@@ -69,8 +69,8 @@ type Settings = {
   targetFps: number;
   resolution: string;
   cameraId: string;
-  modelMode: "base" | "hybrid";
-  gestureMode: "all" | "static" | "dynamic";
+  modelMode: 'base' | 'hybrid';
+  gestureMode: 'all' | 'static' | 'dynamic';
   skeleton: boolean;
   joints: boolean;
   bbox: boolean;
@@ -95,25 +95,42 @@ type Recognizer = {
     gestures: { categoryName: string; score: number }[][];
   };
 };
+type SpeechRecognitionResultLike = {
+  0: { transcript: string };
+};
+type SpeechRecognitionEventLike = {
+  results: ArrayLike<SpeechRecognitionResultLike>;
+};
+type SpeechRecognitionLike = {
+  lang: string;
+  continuous: boolean;
+  interimResults: boolean;
+  onresult: ((event: SpeechRecognitionEventLike) => void) | null;
+  onerror: (() => void) | null;
+  onend: (() => void) | null;
+  start: () => void;
+  stop: () => void;
+};
+type SpeechRecognitionConstructor = new () => SpeechRecognitionLike;
 
 const STORAGE = {
-  history: "dastbin-history-v3",
-  samples: "dastbin-samples-v3",
-  model: "dastbin-model-v3",
-  settings: "dastbin-settings-v3",
+  history: 'dastbin-history-v3',
+  samples: 'dastbin-samples-v3',
+  model: 'dastbin-model-v3',
+  settings: 'dastbin-settings-v3',
 };
 const resolutions: Record<string, [number, number]> = {
-  "480p": [640, 480],
-  "720p": [1280, 720],
-  "1080p": [1920, 1080],
+  '480p': [640, 480],
+  '720p': [1280, 720],
+  '1080p': [1920, 1080],
 };
 const defaultSettings: Settings = {
   threshold: 0.62,
   targetFps: 15,
-  resolution: "720p",
-  cameraId: "",
-  modelMode: "hybrid",
-  gestureMode: "all",
+  resolution: '720p',
+  cameraId: '',
+  modelMode: 'hybrid',
+  gestureMode: 'all',
   skeleton: true,
   joints: true,
   bbox: true,
@@ -122,223 +139,223 @@ const defaultSettings: Settings = {
 };
 const roadmap = [
   {
-    level: "01",
-    title: "تشخیص دست",
+    level: '01',
+    title: 'تشخیص دست',
     done: 6,
     total: 6,
     items: [
-      "وجود دست",
-      "چپ / راست",
-      "یک یا دو دست",
-      "اسکلت",
-      "مفاصل",
-      "Bounding Box",
+      'وجود دست',
+      'چپ / راست',
+      'یک یا دو دست',
+      'اسکلت',
+      'مفاصل',
+      'Bounding Box',
     ],
   },
   {
-    level: "02",
-    title: "تشخیص انگشت",
+    level: '02',
+    title: 'تشخیص انگشت',
     done: 4,
     total: 4,
-    items: ["شمارش ۰ تا ۵", "وضعیت هر انگشت", "Open Palm", "Fist"],
+    items: ['شمارش ۰ تا ۵', 'وضعیت هر انگشت', 'Open Palm', 'Fist'],
   },
   {
-    level: "03",
-    title: "حرکت‌ها",
+    level: '03',
+    title: 'حرکت‌ها',
     done: 9,
     total: 9,
     items: [
-      "Thumbs Up / Down",
-      "Peace",
-      "OK",
-      "Fist",
-      "Open Palm",
-      "Wave",
-      "Pinch",
-      "حرکت سفارشی",
+      'Thumbs Up / Down',
+      'Peace',
+      'OK',
+      'Fist',
+      'Open Palm',
+      'Wave',
+      'Pinch',
+      'حرکت سفارشی',
     ],
   },
   {
-    level: "04",
-    title: "رهگیری زنده",
+    level: '04',
+    title: 'رهگیری زنده',
     done: 6,
     total: 6,
     items: [
-      "موقعیت دست",
-      "انگشت‌ها",
-      "مسیر حرکت",
-      "جهت",
-      "سرعت",
-      "تشخیص لحظه‌ای",
+      'موقعیت دست',
+      'انگشت‌ها',
+      'مسیر حرکت',
+      'جهت',
+      'سرعت',
+      'تشخیص لحظه‌ای',
     ],
   },
   {
-    level: "05",
-    title: "کنترل رایانه",
+    level: '05',
+    title: 'کنترل رایانه',
     done: 7,
     total: 9,
     items: [
-      "اشاره‌گر داخل صفحه",
-      "Pinch Click",
-      "Pinch Drag",
-      "دو انگشت Scroll",
-      "Back / Forward داخل برنامه",
-      "Volume",
-      "Play / Pause",
-      "کنترل سراسری: نسخه دسکتاپ",
+      'اشاره‌گر داخل صفحه',
+      'Pinch Click',
+      'Pinch Drag',
+      'دو انگشت Scroll',
+      'Back / Forward داخل برنامه',
+      'Volume',
+      'Play / Pause',
+      'کنترل سراسری: نسخه دسکتاپ',
     ],
   },
   {
-    level: "06",
-    title: "یادگیری سفارشی",
+    level: '06',
+    title: 'یادگیری سفارشی',
     done: 9,
     total: 13,
     items: [
-      "جمع‌آوری نمونه",
-      "Label",
-      "پیش‌پردازش",
-      "Train / Test",
-      "آموزش Centroid",
-      "اعتبارسنجی",
-      "ذخیره / Load",
-      "Real-Time Inference",
-      "CNN / ONNX: پایپ‌لاین Python",
+      'جمع‌آوری نمونه',
+      'Label',
+      'پیش‌پردازش',
+      'Train / Test',
+      'آموزش Centroid',
+      'اعتبارسنجی',
+      'ذخیره / Load',
+      'Real-Time Inference',
+      'CNN / ONNX: پایپ‌لاین Python',
     ],
   },
   {
-    level: "07",
-    title: "سنجه‌های مدل",
+    level: '07',
+    title: 'سنجه‌های مدل',
     done: 10,
     total: 10,
     items: [
-      "Accuracy",
-      "Precision",
-      "Recall",
-      "F1",
-      "Confusion Matrix",
-      "Loss / Accuracy Curve",
-      "Inference Time",
-      "FPS",
-      "Latency",
-      "Confidence",
+      'Accuracy',
+      'Precision',
+      'Recall',
+      'F1',
+      'Confusion Matrix',
+      'Loss / Accuracy Curve',
+      'Inference Time',
+      'FPS',
+      'Latency',
+      'Confidence',
     ],
   },
   {
-    level: "08",
-    title: "داشبورد AI",
+    level: '08',
+    title: 'داشبورد AI',
     done: 12,
     total: 12,
     items: [
-      "دوربین",
-      "وضعیت AI",
-      "دست‌ها",
-      "چپ / راست",
-      "حرکت",
-      "انگشت",
-      "اطمینان",
-      "FPS",
-      "Latency",
-      "مدل / نسخه",
-      "زمان پردازش",
-      "تاریخچه",
+      'دوربین',
+      'وضعیت AI',
+      'دست‌ها',
+      'چپ / راست',
+      'حرکت',
+      'انگشت',
+      'اطمینان',
+      'FPS',
+      'Latency',
+      'مدل / نسخه',
+      'زمان پردازش',
+      'تاریخچه',
     ],
   },
   {
-    level: "09",
-    title: "داده و تاریخچه",
+    level: '09',
+    title: 'داده و تاریخچه',
     done: 9,
     total: 9,
     items: [
-      "زمان",
-      "حرکت",
-      "Confidence",
-      "Screenshot",
-      "ذخیره محلی",
-      "نمودار حرکت",
-      "Confidence",
-      "FPS",
-      "Export",
+      'زمان',
+      'حرکت',
+      'Confidence',
+      'Screenshot',
+      'ذخیره محلی',
+      'نمودار حرکت',
+      'نمودار اطمینان',
+      'FPS',
+      'Export',
     ],
   },
   {
-    level: "10",
-    title: "صدا + حرکت",
+    level: '10',
+    title: 'صدا + حرکت',
     done: 6,
     total: 6,
     items: [
-      "فرمان صوتی",
-      "فعال / غیرفعال",
-      "Start",
-      "Stop",
-      "Change Mode",
-      "Voice + Gesture",
+      'فرمان صوتی',
+      'فعال / غیرفعال',
+      'Start',
+      'Stop',
+      'Change Mode',
+      'Voice + Gesture',
     ],
   },
   {
-    level: "11",
-    title: "بینایی پیشرفته",
+    level: '11',
+    title: 'بینایی پیشرفته',
     done: 6,
     total: 8,
     items: [
-      "Multi-Hand",
-      "Classification",
-      "Dynamic Gesture",
-      "Motion",
-      "Temporal Window",
-      "Sequence",
-      "Custom Training",
-      "Object Interaction: بعدی",
+      'Multi-Hand',
+      'Classification',
+      'Dynamic Gesture',
+      'Motion',
+      'Temporal Window',
+      'Sequence',
+      'Custom Training',
+      'Object Interaction: بعدی',
     ],
   },
   {
-    level: "12",
-    title: "رابط حرفه‌ای",
+    level: '12',
+    title: 'رابط حرفه‌ای',
     done: 11,
     total: 11,
     items: [
-      "Dark / Light",
-      "انتخاب دوربین",
-      "Resolution",
-      "FPS",
-      "Threshold",
-      "Model",
-      "Gesture Mode",
-      "Start / Stop",
-      "Fullscreen",
-      "Dashboard",
-      "Responsive",
+      'Dark / Light',
+      'انتخاب دوربین',
+      'Resolution',
+      'FPS',
+      'Threshold',
+      'Model',
+      'Gesture Mode',
+      'Start / Stop',
+      'Fullscreen',
+      'Dashboard',
+      'Responsive',
     ],
   },
   {
-    level: "13",
-    title: "انتشار",
+    level: '13',
+    title: 'انتشار',
     done: 5,
     total: 10,
     items: [
-      "CPU / WASM",
-      "کاهش Latency",
-      "Web",
-      "API سلامت",
-      "نسخه منتشرشده",
-      "ONNX / GPU",
-      "Desktop",
-      "Mobile: مسیر جدا",
+      'CPU / WASM',
+      'کاهش Latency',
+      'Web',
+      'API سلامت',
+      'نسخه منتشرشده',
+      'ONNX / GPU',
+      'Desktop',
+      'Mobile: مسیر جدا',
     ],
   },
 ];
 
 const formatTime = (ms: number) =>
-  new Date(ms).toLocaleTimeString("fa-IR", {
-    hour: "2-digit",
-    minute: "2-digit",
-    second: "2-digit",
+  new Date(ms).toLocaleTimeString('fa-IR', {
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
   });
 const handFa = (value: string) =>
-  value === "Left" ? "چپ" : value === "Right" ? "راست" : "نامشخص";
+  value === 'Left' ? 'چپ' : value === 'Right' ? 'راست' : 'نامشخص';
 
 function MiniLine({
   values,
-  color = "#b8ff6a",
+  color = '#b8ff6a',
 }: {
   values: number[];
   color?: string;
@@ -351,7 +368,7 @@ function MiniLine({
       (v, i) =>
         `${(i / Math.max(1, values.length - 1)) * 100},${38 - ((v - min) / spread) * 34}`,
     )
-    .join(" ");
+    .join(' ');
   return (
     <svg
       className="mini-line"
@@ -371,9 +388,9 @@ function MiniLine({
 }
 
 export default function Home() {
-  const [tab, setTab] = useState<Tab>("live");
-  const [phase, setPhase] = useState<Phase>("idle");
-  const [message, setMessage] = useState("");
+  const [tab, setTab] = useState<Tab>('live');
+  const [phase, setPhase] = useState<Phase>('idle');
+  const [message, setMessage] = useState('');
   const [hands, setHands] = useState<HandSnapshot[]>([]);
   const [settings, setSettings] = useState<Settings>(defaultSettings);
   const [metrics, setMetrics] = useState<Metrics>({
@@ -390,14 +407,14 @@ export default function Home() {
   const [historyItems, setHistoryItems] = useState<HistoryItem[]>([]);
   const [samples, setSamples] = useState<CustomSample[]>([]);
   const [customModel, setCustomModel] = useState<CustomModel | null>(null);
-  const [sampleLabel, setSampleLabel] = useState("حرکت من");
-  const [theme, setTheme] = useState<"dark" | "light">("dark");
+  const [sampleLabel, setSampleLabel] = useState('حرکت من');
+  const [theme, setTheme] = useState<'dark' | 'light'>('dark');
   const [voiceActive, setVoiceActive] = useState(false),
-    [voiceText, setVoiceText] = useState("");
+    [voiceText, setVoiceText] = useState('');
   const [controlMode, setControlMode] = useState(false),
     [cursor, setCursor] = useState({ x: 0.5, y: 0.5, pinch: false });
   const [controlLog, setControlLog] = useState<string[]>([
-    "کنترل حرکتی آماده است",
+    'کنترل حرکتی آماده است',
   ]);
   const [volume, setVolume] = useState(55),
     [playing, setPlaying] = useState(false),
@@ -429,12 +446,15 @@ export default function Home() {
     handsRef = useRef(hands),
     phaseRef = useRef(phase),
     tabRef = useRef(tab),
-    voiceRef = useRef<any>(null);
-  settingsRef.current = settings;
-  modelRef.current = customModel;
-  handsRef.current = hands;
-  phaseRef.current = phase;
-  tabRef.current = tab;
+    voiceRef = useRef<SpeechRecognitionLike | null>(null);
+
+  useEffect(() => {
+    settingsRef.current = settings;
+    modelRef.current = customModel;
+    handsRef.current = hands;
+    phaseRef.current = phase;
+    tabRef.current = tab;
+  }, [customModel, hands, phase, settings, tab]);
 
   useEffect(() => {
     try {
@@ -447,7 +467,7 @@ export default function Home() {
       if (savedHistory) setHistoryItems(JSON.parse(savedHistory).slice(0, 100));
       if (savedSamples) setSamples(JSON.parse(savedSamples).slice(0, 600));
       if (savedModel) setCustomModel(JSON.parse(savedModel));
-      if (localStorage.getItem("dastbin-theme") === "light") setTheme("light");
+      if (localStorage.getItem('dastbin-theme') === 'light') setTheme('light');
     } catch {}
   }, []);
   useEffect(() => {
@@ -473,13 +493,15 @@ export default function Home() {
   }, [samples]);
   useEffect(() => {
     try {
-      customModel
-        ? localStorage.setItem(STORAGE.model, JSON.stringify(customModel))
-        : localStorage.removeItem(STORAGE.model);
+      if (customModel) {
+        localStorage.setItem(STORAGE.model, JSON.stringify(customModel));
+      } else {
+        localStorage.removeItem(STORAGE.model);
+      }
     } catch {}
   }, [customModel]);
   useEffect(() => {
-    localStorage.setItem("dastbin-theme", theme);
+    localStorage.setItem('dastbin-theme', theme);
   }, [theme]);
   useEffect(() => {
     const context = (
@@ -494,12 +516,12 @@ export default function Home() {
     const register = async () => {
       await context.registerTool(
         {
-          name: "get_hand_vision_status",
-          title: "Get hand vision status",
+          name: 'get_hand_vision_status',
+          title: 'Get hand vision status',
           description:
-            "Read the current Dastbin AI detection state, visible hands, gesture and live performance without changing the camera.",
+            'Read the current Dastbin AI detection state, visible hands, gesture and live performance without changing the camera.',
           inputSchema: {
-            type: "object",
+            type: 'object',
             properties: {},
             additionalProperties: false,
           },
@@ -519,19 +541,19 @@ export default function Home() {
       );
       await context.registerTool(
         {
-          name: "open_hand_vision_section",
-          title: "Open dashboard section",
+          name: 'open_hand_vision_section',
+          title: 'Open dashboard section',
           description:
-            "Open a Dastbin dashboard section. This changes only the visible application tab.",
+            'Open a Dastbin dashboard section. This changes only the visible application tab.',
           inputSchema: {
-            type: "object",
+            type: 'object',
             properties: {
               section: {
-                type: "string",
-                enum: ["live", "analytics", "studio", "roadmap"],
+                type: 'string',
+                enum: ['live', 'analytics', 'studio', 'roadmap'],
               },
             },
-            required: ["section"],
+            required: ['section'],
             additionalProperties: false,
           },
           annotations: { readOnlyHint: false, untrustedContentHint: false },
@@ -539,9 +561,9 @@ export default function Home() {
             const section = (input as { section?: Tab })?.section;
             if (
               !section ||
-              !["live", "analytics", "studio", "roadmap"].includes(section)
+              !['live', 'analytics', 'studio', 'roadmap'].includes(section)
             )
-              throw new Error("Invalid section");
+              throw new Error('Invalid section');
             setTab(section);
             return { section };
           },
@@ -558,7 +580,7 @@ export default function Home() {
     [],
   );
   const addHistory = useCallback(
-    (item: Omit<HistoryItem, "id">) =>
+    (item: Omit<HistoryItem, 'id'>) =>
       setHistoryItems((prev) =>
         [
           {
@@ -582,8 +604,8 @@ export default function Home() {
     lastWristRef.current = null;
     previousPinchRef.current = false;
     setHands([]);
-    setPhase("idle");
-    if (!quiet) setMessage("");
+    setPhase('idle');
+    if (!quiet) setMessage('');
   }, []);
   useEffect(() => () => stop(true), [stop]);
 
@@ -605,7 +627,7 @@ export default function Home() {
         ) {
           const target = document
             .elementFromPoint(clientX, clientY)
-            ?.closest<HTMLElement>("[data-gesture-target]");
+            ?.closest<HTMLElement>('[data-gesture-target]');
           if (target) {
             target.click();
             addLog(`Pinch Click → ${target.dataset.gestureTarget}`);
@@ -625,29 +647,29 @@ export default function Home() {
       previousPinchRef.current = hand.pinch > 0.72;
       lastWristRef.current = wrist;
       if (now - lastControlActionRef.current < 700) return;
-      if (hand.gesture === "Thumb_Up") {
+      if (hand.gesture === 'Thumb_Up') {
         setVolume((v) => Math.min(100, v + 5));
-        addLog("Volume Up");
+        addLog('Volume Up');
         lastControlActionRef.current = now;
       }
-      if (hand.gesture === "Thumb_Down") {
+      if (hand.gesture === 'Thumb_Down') {
         setVolume((v) => Math.max(0, v - 5));
-        addLog("Volume Down");
+        addLog('Volume Down');
         lastControlActionRef.current = now;
       }
-      if (hand.gesture === "Victory") {
+      if (hand.gesture === 'Victory') {
         setPlaying((v) => !v);
-        addLog("Play / Pause");
+        addLog('Play / Pause');
         lastControlActionRef.current = now;
       }
-      if (hand.gesture === "Swipe_Left") {
-        setTab("analytics");
-        addLog("رفتن به تحلیل");
+      if (hand.gesture === 'Swipe_Left') {
+        setTab('analytics');
+        addLog('رفتن به تحلیل');
         lastControlActionRef.current = now;
       }
-      if (hand.gesture === "Swipe_Right") {
-        setTab("live");
-        addLog("بازگشت به نمای زنده");
+      if (hand.gesture === 'Swipe_Right') {
+        setTab('live');
+        addLog('بازگشت به نمای زنده');
         lastControlActionRef.current = now;
       }
     },
@@ -657,7 +679,7 @@ export default function Home() {
   const processHistory = useCallback(
     (snapshot: HandSnapshot[], now: number) => {
       for (const hand of snapshot) {
-        if (hand.gesture === "None") continue;
+        if (hand.gesture === 'None') continue;
         const key = hand.handedness,
           previous = lastHistoryRef.current[key];
         if (
@@ -682,19 +704,19 @@ export default function Home() {
   const start = useCallback(async () => {
     stop(true);
     const generation = generationRef.current;
-    setPhase("loading");
-    setMessage("");
+    setPhase('loading');
+    setMessage('');
     try {
       if (!window.isSecureContext || !navigator.mediaDevices?.getUserMedia)
-        throw new Error("این مرورگر دسترسی امن به دوربین ندارد.");
+        throw new Error('این مرورگر دسترسی امن به دوربین ندارد.');
       const [width, height] =
-        resolutions[settingsRef.current.resolution] || resolutions["720p"];
+        resolutions[settingsRef.current.resolution] || resolutions['720p'];
       const media = await navigator.mediaDevices.getUserMedia({
         video: {
           deviceId: settingsRef.current.cameraId
             ? { exact: settingsRef.current.cameraId }
             : undefined,
-          facingMode: settingsRef.current.cameraId ? undefined : "user",
+          facingMode: settingsRef.current.cameraId ? undefined : 'user',
           width: { ideal: width },
           height: { ideal: height },
           frameRate: { ideal: 30 },
@@ -711,32 +733,30 @@ export default function Home() {
       videoRef.current.srcObject = media;
       await videoRef.current.play();
       const devices = await navigator.mediaDevices.enumerateDevices();
-      setCameras(devices.filter((device) => device.kind === "videoinput"));
-      const moduleUrl = new URL("/vision/vision_bundle.mjs", location.href)
+      setCameras(devices.filter((device) => device.kind === 'videoinput'));
+      const moduleUrl = new URL('/vision/vision_bundle.mjs', location.href)
           .href,
-        wasmUrl = new URL("/vision/wasm", location.href).href,
-        modelUrl = new URL("/models/gesture_recognizer.task", location.href)
+        wasmUrl = new URL('/vision/wasm', location.href).href,
+        modelUrl = new URL('/models/gesture_recognizer.task', location.href)
           .href;
-      const module = await import(/* @vite-ignore */ moduleUrl),
-        vision = await module.FilesetResolver.forVisionTasks(wasmUrl);
-      recognizerRef.current = await module.GestureRecognizer.createFromOptions(
-        vision,
-        {
-          baseOptions: { modelAssetPath: modelUrl, delegate: "CPU" },
-          runningMode: "VIDEO",
+      const visionModule = await import(/* @vite-ignore */ moduleUrl),
+        vision = await visionModule.FilesetResolver.forVisionTasks(wasmUrl);
+      recognizerRef.current =
+        await visionModule.GestureRecognizer.createFromOptions(vision, {
+          baseOptions: { modelAssetPath: modelUrl, delegate: 'CPU' },
+          runningMode: 'VIDEO',
           numHands: 2,
           minHandDetectionConfidence: 0.55,
           minHandPresenceConfidence: 0.55,
           minTrackingConfidence: 0.55,
-        },
-      );
+        });
       if (generation !== generationRef.current) return;
       sessionStartRef.current = performance.now();
       lastRunRef.current = 0;
       timingRef.current = [];
       frameTimesRef.current = [];
-      setPhase("running");
-      setMessage("");
+      setPhase('running');
+      setMessage('');
       const loop = (now: number) => {
         if (
           generation !== generationRef.current ||
@@ -757,7 +777,7 @@ export default function Home() {
               ),
               elapsed = performance.now() - begin;
             const chosenModel =
-              settingsRef.current.modelMode === "hybrid"
+              settingsRef.current.modelMode === 'hybrid'
                 ? modelRef.current
                 : null;
             const snapshot = analyzeHands(
@@ -767,18 +787,18 @@ export default function Home() {
               now,
             ).map((hand) => {
               const isDynamic =
-                hand.gesture === "Wave" || hand.gesture.startsWith("Swipe_");
+                hand.gesture === 'Wave' || hand.gesture.startsWith('Swipe_');
               const allowedMode =
-                settingsRef.current.gestureMode === "all" ||
-                (settingsRef.current.gestureMode === "dynamic"
+                settingsRef.current.gestureMode === 'all' ||
+                (settingsRef.current.gestureMode === 'dynamic'
                   ? isDynamic
                   : !isDynamic);
               return allowedMode &&
                 (hand.confidence >= settingsRef.current.threshold ||
-                  ["Pinch", "Wave"].includes(hand.gesture) ||
-                  hand.gesture.startsWith("Swipe_"))
+                  ['Pinch', 'Wave'].includes(hand.gesture) ||
+                  hand.gesture.startsWith('Swipe_'))
                 ? hand
-                : { ...hand, gesture: "None" };
+                : { ...hand, gesture: 'None' };
             });
             setHands(snapshot);
             processHistory(snapshot, now);
@@ -816,15 +836,15 @@ export default function Home() {
     } catch (error) {
       const e = error as Error,
         detail =
-          e.name === "NotAllowedError"
-            ? "اجازهٔ دوربین داده نشد. دسترسی Camera را برای این سایت فعال کنید."
-            : e.name === "NotFoundError"
-              ? "هیچ دوربینی پیدا نشد."
-              : e.name === "NotReadableError"
-                ? "دوربین در برنامهٔ دیگری در حال استفاده است."
-                : `مدل آماده نشد: ${e.message || "خطای ناشناخته"}`;
+          e.name === 'NotAllowedError'
+            ? 'اجازهٔ دوربین داده نشد. دسترسی Camera را برای این سایت فعال کنید.'
+            : e.name === 'NotFoundError'
+              ? 'هیچ دوربینی پیدا نشد.'
+              : e.name === 'NotReadableError'
+                ? 'دوربین در برنامهٔ دیگری در حال استفاده است.'
+                : `مدل آماده نشد: ${e.message || 'خطای ناشناخته'}`;
       stop(true);
-      setPhase("error");
+      setPhase('error');
       setMessage(detail);
     }
   }, [processHistory, runControls, stop]);
@@ -837,13 +857,13 @@ export default function Home() {
       height = video.videoHeight || 720;
     if (canvas.width !== width) canvas.width = width;
     if (canvas.height !== height) canvas.height = height;
-    const ctx = canvas.getContext("2d");
+    const ctx = canvas.getContext('2d');
     if (!ctx) return;
     ctx.clearRect(0, 0, width, height);
     const x = (value: number) => (settings.mirror ? 1 - value : value) * width,
       y = (value: number) => value * height;
     hands.forEach((hand, handIndex) => {
-      const color = handIndex ? "#66d9ff" : "#b8ff6a";
+      const color = handIndex ? '#66d9ff' : '#b8ff6a';
       if (settings.trail) {
         const key = `${hand.id}-${hand.handedness}`,
           trail = motionRef.current[key] || [];
@@ -877,7 +897,7 @@ export default function Home() {
             0,
             Math.PI * 2,
           );
-          ctx.fillStyle = index === 4 || index === 8 ? "#fff" : color;
+          ctx.fillStyle = index === 4 || index === 8 ? '#fff' : color;
           ctx.fill();
         });
       if (settings.bbox) {
@@ -895,7 +915,7 @@ export default function Home() {
         const label = `${handFa(hand.handedness)} · ${labelForGesture(hand.gesture)} · ${hand.fingerCount}`;
         ctx.font = `600 ${Math.max(15, width / 60)}px Tahoma`;
         const labelWidth = ctx.measureText(label).width + 20;
-        ctx.fillStyle = "#0e120ed9";
+        ctx.fillStyle = '#0e120ed9';
         ctx.fillRect(
           left * width,
           Math.max(0, hand.bbox.y * height - 34),
@@ -916,10 +936,10 @@ export default function Home() {
     const video = videoRef.current,
       overlay = canvasRef.current;
     if (!video || !overlay || !video.videoWidth) return;
-    const shot = document.createElement("canvas");
+    const shot = document.createElement('canvas');
     shot.width = video.videoWidth;
     shot.height = video.videoHeight;
-    const ctx = shot.getContext("2d");
+    const ctx = shot.getContext('2d');
     if (!ctx) return;
     if (settings.mirror) {
       ctx.translate(shot.width, 0);
@@ -931,20 +951,20 @@ export default function Home() {
     shot.toBlob((blob) => {
       if (!blob) return;
       const url = URL.createObjectURL(blob),
-        anchor = document.createElement("a");
+        anchor = document.createElement('a');
       anchor.href = url;
       anchor.download = `dastbin-${Date.now()}.png`;
       anchor.click();
       setTimeout(() => URL.revokeObjectURL(url), 1000);
-    }, "image/png");
+    }, 'image/png');
     const primary = handsRef.current[0];
     addHistory({
       time: Date.now(),
-      gesture: primary?.gesture || "Screenshot",
-      hand: primary?.handedness || "Unknown",
+      gesture: primary?.gesture || 'Screenshot',
+      hand: primary?.handedness || 'Unknown',
       confidence: primary?.confidence || 0,
       fingerCount: primary?.fingerCount || 0,
-      screenshot: "downloaded",
+      screenshot: 'downloaded',
     });
   }, [addHistory, settings.mirror]);
 
@@ -955,32 +975,32 @@ export default function Home() {
       return;
     }
     const speechWindow = window as unknown as {
-        SpeechRecognition?: new () => any;
-        webkitSpeechRecognition?: new () => any;
+        SpeechRecognition?: SpeechRecognitionConstructor;
+        webkitSpeechRecognition?: SpeechRecognitionConstructor;
       },
       SpeechRecognition =
         speechWindow.SpeechRecognition || speechWindow.webkitSpeechRecognition;
     if (!SpeechRecognition) {
-      setVoiceText("مرورگر شما فرمان صوتی را پشتیبانی نمی‌کند.");
+      setVoiceText('مرورگر شما فرمان صوتی را پشتیبانی نمی‌کند.');
       return;
     }
     const recognition = new SpeechRecognition();
-    recognition.lang = "fa-IR";
+    recognition.lang = 'fa-IR';
     recognition.continuous = true;
     recognition.interimResults = false;
-    recognition.onresult = (event: any) => {
+    recognition.onresult = (event) => {
       const text = event.results[event.results.length - 1][0].transcript.trim();
       setVoiceText(text);
       if (/شروع|استارت/.test(text)) void start();
       if (/توقف|خاموش/.test(text)) stop();
-      if (/روشن/.test(text)) setTheme("light");
-      if (/تاریک|دارک/.test(text)) setTheme("dark");
-      if (/تحلیل|داشبورد/.test(text)) setTab("analytics");
-      if (/آموزش/.test(text)) setTab("studio");
+      if (/روشن/.test(text)) setTheme('light');
+      if (/تاریک|دارک/.test(text)) setTheme('dark');
+      if (/تحلیل|داشبورد/.test(text)) setTab('analytics');
+      if (/آموزش/.test(text)) setTab('studio');
     };
     recognition.onerror = () => {
       setVoiceActive(false);
-      setVoiceText("فرمان صوتی متوقف شد.");
+      setVoiceText('فرمان صوتی متوقف شد.');
     };
     recognition.onend = () => {
       voiceRef.current = null;
@@ -989,14 +1009,14 @@ export default function Home() {
     voiceRef.current = recognition;
     recognition.start();
     setVoiceActive(true);
-    setVoiceText("گوش می‌دهم…");
+    setVoiceText('گوش می‌دهم…');
   }, [start, stop, voiceActive]);
 
   const captureSample = useCallback(() => {
     const points = handsRef.current[0]?.landmarks;
     if (!points?.length || !sampleLabel.trim()) {
       setMessage(
-        "برای ثبت نمونه، یک دست را در قاب نگه دارید و نام حرکت را وارد کنید.",
+        'برای ثبت نمونه، یک دست را در قاب نگه دارید و نام حرکت را وارد کنید.',
       );
       return;
     }
@@ -1015,12 +1035,12 @@ export default function Home() {
   const train = useCallback(() => {
     const model = trainCustomModel(samples);
     if (!model) {
-      setMessage("برای هر حرکت سفارشی حداقل ۳ نمونه ثبت کنید.");
+      setMessage('برای هر حرکت سفارشی حداقل ۳ نمونه ثبت کنید.');
       return;
     }
     setCustomModel(model);
     setMessage(
-      `مدل سفارشی با ${model.sampleCount.toLocaleString("fa-IR")} نمونه آموزش دید.`,
+      `مدل سفارشی با ${model.sampleCount.toLocaleString('fa-IR')} نمونه آموزش دید.`,
     );
   }, [samples]);
   const customEvaluation = useMemo(() => {
@@ -1044,7 +1064,7 @@ export default function Home() {
       customModel.labels.forEach((predicted) => (matrix[label][predicted] = 0));
     });
     const classify = (model: CustomModel, sample: CustomSample) => {
-      let best = { label: "", distance: Infinity };
+      let best = { label: '', distance: Infinity };
       model.labels.forEach((label) => {
         const centroid = model.centroids[label],
           distance = Math.sqrt(
@@ -1063,10 +1083,10 @@ export default function Home() {
         matrix[sample.label][best.label]++;
       if (best.label === sample.label) {
         correct++;
-        perLabel[sample.label] && perLabel[sample.label].tp++;
+        if (perLabel[sample.label]) perLabel[sample.label].tp++;
       } else {
-        perLabel[best.label] && perLabel[best.label].fp++;
-        perLabel[sample.label] && perLabel[sample.label].fn++;
+        if (perLabel[best.label]) perLabel[best.label].fp++;
+        if (perLabel[sample.label]) perLabel[sample.label].fn++;
       }
     });
     const scores = Object.values(perLabel),
@@ -1122,22 +1142,22 @@ export default function Home() {
   const exportHistory = () =>
     downloadFile(
       `dastbin-history-${Date.now()}.csv`,
-      "\uFEFFزمان,حرکت,دست,انگشت,اطمینان\n" +
+      '\uFEFFزمان,حرکت,دست,انگشت,اطمینان\n' +
         historyItems
           .map(
             (item) =>
               `${new Date(item.time).toISOString()},${labelForGesture(item.gesture)},${handFa(item.hand)},${item.fingerCount},${Math.round(item.confidence * 100)}`,
           )
-          .join("\n"),
-      "text/csv;charset=utf-8",
+          .join('\n'),
+      'text/csv;charset=utf-8',
     );
-  const running = phase === "running",
+  const running = phase === 'running',
     primary = hands[0];
 
   return (
     <div className={`vision-app ${theme}`}>
       <header className="app-header">
-        <a href="/" className="brand">
+        <Link href="/" className="brand">
           <span className="brand-mark">
             <ScanLine />
           </span>
@@ -1145,19 +1165,19 @@ export default function Home() {
             <b>دست‌بین AI</b>
             <small>HAND VISION LAB</small>
           </span>
-        </a>
+        </Link>
         <nav className="main-tabs" aria-label="بخش‌های برنامه">
           {(
             [
-              ["live", "زنده", Eye],
-              ["analytics", "تحلیل", BarChart3],
-              ["studio", "استودیو", BrainCircuit],
-              ["roadmap", "نقشه‌راه", Target],
+              ['live', 'زنده', Eye],
+              ['analytics', 'تحلیل', BarChart3],
+              ['studio', 'استودیو', BrainCircuit],
+              ['roadmap', 'نقشه‌راه', Target],
             ] as const
           ).map(([value, label, Icon]) => (
             <button
               key={value}
-              className={tab === value ? "active" : ""}
+              className={tab === value ? 'active' : ''}
               onClick={() => setTab(value)}
             >
               <Icon size={17} />
@@ -1167,7 +1187,7 @@ export default function Home() {
         </nav>
         <div className="header-actions">
           <button
-            className={`icon-button ${voiceActive ? "active" : ""}`}
+            className={`icon-button ${voiceActive ? 'active' : ''}`}
             onClick={toggleVoice}
             title="فرمان صوتی"
           >
@@ -1176,11 +1196,11 @@ export default function Home() {
           <button
             className="icon-button"
             onClick={() =>
-              setTheme((value) => (value === "dark" ? "light" : "dark"))
+              setTheme((value) => (value === 'dark' ? 'light' : 'dark'))
             }
             title="تغییر پوسته"
           >
-            {theme === "dark" ? <Sun size={19} /> : <Moon size={19} />}
+            {theme === 'dark' ? <Sun size={19} /> : <Moon size={19} />}
           </button>
           <button
             className="icon-button"
@@ -1196,11 +1216,11 @@ export default function Home() {
           ) : (
             <button
               className="start-button"
-              disabled={phase === "loading"}
+              disabled={phase === 'loading'}
               onClick={() => void start()}
             >
               <Camera size={18} />
-              {phase === "loading" ? "آماده‌سازی…" : "شروع تشخیص"}
+              {phase === 'loading' ? 'آماده‌سازی…' : 'شروع تشخیص'}
             </button>
           )}
         </div>
@@ -1209,30 +1229,30 @@ export default function Home() {
         <div className="voice-toast">
           <Mic size={15} />
           <span>{voiceText}</span>
-          <button onClick={() => setVoiceText("")}>×</button>
+          <button onClick={() => setVoiceText('')}>×</button>
         </div>
       )}
       {message && (
-        <div className={`system-message ${phase === "error" ? "error" : ""}`}>
+        <div className={`system-message ${phase === 'error' ? 'error' : ''}`}>
           <CircleDot size={17} />
           <span>{message}</span>
-          <button onClick={() => setMessage("")}>×</button>
+          <button onClick={() => setMessage('')}>×</button>
         </div>
       )}
       <main className="app-main">
-        {tab === "live" && (
+        {tab === 'live' && (
           <>
             <section className="status-strip">
               <div>
-                <span className={`status-led ${running ? "on" : ""}`} />
+                <span className={`status-led ${running ? 'on' : ''}`} />
                 <p>
                   وضعیت AI
                   <strong>
                     {running
-                      ? "فعال"
-                      : phase === "loading"
-                        ? "در حال بارگذاری"
-                        : "آماده"}
+                      ? 'فعال'
+                      : phase === 'loading'
+                        ? 'در حال بارگذاری'
+                        : 'آماده'}
                   </strong>
                 </p>
               </div>
@@ -1240,7 +1260,7 @@ export default function Home() {
                 <Hand />
                 <p>
                   دست‌های دیده‌شده
-                  <strong>{hands.length.toLocaleString("fa-IR")}</strong>
+                  <strong>{hands.length.toLocaleString('fa-IR')}</strong>
                 </p>
               </div>
               <div>
@@ -1248,7 +1268,7 @@ export default function Home() {
                 <p>
                   حرکت فعلی
                   <strong>
-                    {primary ? labelForGesture(primary.gesture) : "—"}
+                    {primary ? labelForGesture(primary.gesture) : '—'}
                   </strong>
                 </p>
               </div>
@@ -1256,7 +1276,7 @@ export default function Home() {
                 <Gauge />
                 <p>
                   سرعت پردازش
-                  <strong>{metrics.fps.toLocaleString("fa-IR")} FPS</strong>
+                  <strong>{metrics.fps.toLocaleString('fa-IR')} FPS</strong>
                 </p>
               </div>
               <div>
@@ -1265,8 +1285,8 @@ export default function Home() {
                   تاخیر
                   <strong>
                     {metrics.latency
-                      ? `${Math.round(metrics.latency).toLocaleString("fa-IR")} ms`
-                      : "—"}
+                      ? `${Math.round(metrics.latency).toLocaleString('fa-IR')} ms`
+                      : '—'}
                   </strong>
                 </p>
               </div>
@@ -1275,7 +1295,7 @@ export default function Home() {
                 <p>
                   مدل
                   <strong>
-                    {customModel ? "پایه + سفارشی" : "MediaPipe v0.10"}
+                    {customModel ? 'پایه + سفارشی' : 'MediaPipe v0.10'}
                   </strong>
                 </p>
               </div>
@@ -1290,8 +1310,8 @@ export default function Home() {
                     <span className="privacy-pill">
                       <ShieldCheck size={14} /> محلی
                     </span>
-                    <span className={running ? "live-pill" : "offline-pill"}>
-                      {running ? "● LIVE" : "OFFLINE"}
+                    <span className={running ? 'live-pill' : 'offline-pill'}>
+                      {running ? '● LIVE' : 'OFFLINE'}
                     </span>
                   </div>
                 </div>
@@ -1300,7 +1320,7 @@ export default function Home() {
                     ref={videoRef}
                     muted
                     playsInline
-                    className={`${running || phase === "loading" ? "visible" : ""} ${settings.mirror ? "mirrored" : ""}`}
+                    className={`${running || phase === 'loading' ? 'visible' : ''} ${settings.mirror ? 'mirrored' : ''}`}
                   />
                   <canvas ref={canvasRef} />
                   {!running && (
@@ -1311,16 +1331,16 @@ export default function Home() {
                         <i />
                       </div>
                       <h1>
-                        {phase === "loading"
-                          ? "مدل بینایی در حال آماده‌شدن است"
-                          : "دستت را وارد قاب کن"}
+                        {phase === 'loading'
+                          ? 'مدل بینایی در حال آماده‌شدن است'
+                          : 'دستت را وارد قاب کن'}
                       </h1>
                       <p>
-                        {phase === "loading"
-                          ? "مدل و WebAssembly از همین دستگاه بارگیری می‌شوند."
-                          : "تا دو دست، ۲۱ نقطهٔ مفصل و حرکت‌ها را هم‌زمان تشخیص می‌دهیم."}
+                        {phase === 'loading'
+                          ? 'مدل و WebAssembly از همین دستگاه بارگیری می‌شوند.'
+                          : 'تا دو دست، ۲۱ نقطهٔ مفصل و حرکت‌ها را هم‌زمان تشخیص می‌دهیم.'}
                       </p>
-                      {phase !== "loading" && (
+                      {phase !== 'loading' && (
                         <button
                           className="start-button large"
                           onClick={() => void start()}
@@ -1340,7 +1360,7 @@ export default function Home() {
                   )}
                   {controlMode && running && (
                     <span
-                      className={`virtual-cursor ${cursor.pinch ? "pinching" : ""}`}
+                      className={`virtual-cursor ${cursor.pinch ? 'pinching' : ''}`}
                       style={{
                         left: `${cursor.x * 100}%`,
                         top: `${cursor.y * 100}%`,
@@ -1351,14 +1371,11 @@ export default function Home() {
                   )}
                   <div className="stage-info">
                     <span>
-                      {videoRef.current?.videoWidth ||
-                        resolutions[settings.resolution][0]}{" "}
-                      ×{" "}
-                      {videoRef.current?.videoHeight ||
-                        resolutions[settings.resolution][1]}
+                      {resolutions[settings.resolution][0]} ×{' '}
+                      {resolutions[settings.resolution][1]}
                     </span>
                     <span>
-                      {settings.mirror ? "تصویر آینه‌ای" : "تصویر واقعی"}
+                      {settings.mirror ? 'تصویر آینه‌ای' : 'تصویر واقعی'}
                     </span>
                   </div>
                 </div>
@@ -1366,9 +1383,9 @@ export default function Home() {
                   <div className="toolbar-toggles">
                     {(
                       [
-                        ["skeleton", "اسکلت"],
-                        ["bbox", "کادر"],
-                        ["trail", "مسیر"],
+                        ['skeleton', 'اسکلت'],
+                        ['bbox', 'کادر'],
+                        ['trail', 'مسیر'],
                       ] as const
                     ).map(([key, label]) => (
                       <label key={key}>
@@ -1411,19 +1428,19 @@ export default function Home() {
                     </span>
                     <small>
                       {primary
-                        ? `${Math.round(primary.confidence * 100).toLocaleString("fa-IR")}٪`
-                        : "—"}
+                        ? `${Math.round(primary.confidence * 100).toLocaleString('fa-IR')}٪`
+                        : '—'}
                     </small>
                   </div>
                   <div
-                    className={`gesture-symbol ${primary?.gesture === "Closed_Fist" ? "fist" : ""}`}
+                    className={`gesture-symbol ${primary?.gesture === 'Closed_Fist' ? 'fist' : ''}`}
                   >
-                    {primary?.gesture === "Closed_Fist" ? (
-                      "✊"
-                    ) : primary?.gesture === "Victory" ? (
-                      "✌️"
-                    ) : primary?.gesture === "Thumb_Up" ? (
-                      "👍"
+                    {primary?.gesture === 'Closed_Fist' ? (
+                      '✊'
+                    ) : primary?.gesture === 'Victory' ? (
+                      '✌️'
+                    ) : primary?.gesture === 'Thumb_Up' ? (
+                      '👍'
                     ) : (
                       <Hand />
                     )}
@@ -1431,12 +1448,12 @@ export default function Home() {
                   <h2>
                     {primary
                       ? labelForGesture(primary.gesture)
-                      : "در انتظار دست"}
+                      : 'در انتظار دست'}
                   </h2>
                   <p>
                     {primary
-                      ? `دست ${handFa(primary.handedness)} · ${primary.fingerCount.toLocaleString("fa-IR")} انگشت باز`
-                      : "دوربین را روشن کنید و دست را کامل در قاب نگه دارید."}
+                      ? `دست ${handFa(primary.handedness)} · ${primary.fingerCount.toLocaleString('fa-IR')} انگشت باز`
+                      : 'دوربین را روشن کنید و دست را کامل در قاب نگه دارید.'}
                   </p>
                   <div className="confidence-bar">
                     <span
@@ -1446,16 +1463,16 @@ export default function Home() {
                   <div className="mini-stats">
                     <div>
                       <small>سرعت</small>
-                      <b>{primary ? `${primary.speed.toFixed(2)} /s` : "—"}</b>
+                      <b>{primary ? `${primary.speed.toFixed(2)} /s` : '—'}</b>
                     </div>
                     <div>
                       <small>جهت</small>
-                      <b>{primary?.direction || "—"}</b>
+                      <b>{primary?.direction || '—'}</b>
                     </div>
                     <div>
                       <small>Pinch</small>
                       <b>
-                        {primary ? `${Math.round(primary.pinch * 100)}٪` : "—"}
+                        {primary ? `${Math.round(primary.pinch * 100)}٪` : '—'}
                       </b>
                     </div>
                   </div>
@@ -1470,13 +1487,13 @@ export default function Home() {
                   {fingerNames.map((name, index) => (
                     <div className="finger-row" key={name}>
                       <span>{name}</span>
-                      <i className={primary?.fingers[index] ? "open" : ""} />
+                      <i className={primary?.fingers[index] ? 'open' : ''} />
                       <b>
                         {primary
                           ? primary.fingers[index]
-                            ? "باز"
-                            : "بسته"
-                          : "—"}
+                            ? 'باز'
+                            : 'بسته'
+                          : '—'}
                       </b>
                     </div>
                   ))}
@@ -1527,15 +1544,15 @@ export default function Home() {
                     onChange={(e) => setControlMode(e.target.checked)}
                   />
                   <span />
-                  <b>{controlMode ? "فعال" : "غیرفعال"}</b>
+                  <b>{controlMode ? 'فعال' : 'غیرفعال'}</b>
                 </label>
               </div>
               <div
-                className={`control-pad ${controlMode ? "enabled" : ""}`}
+                className={`control-pad ${controlMode ? 'enabled' : ''}`}
                 ref={controlPadRef}
               >
                 <span
-                  className={`pad-cursor ${cursor.pinch ? "pinching" : ""}`}
+                  className={`pad-cursor ${cursor.pinch ? 'pinching' : ''}`}
                   style={{
                     left: `${cursor.x * 100}%`,
                     top: `${cursor.y * 100}%`,
@@ -1558,7 +1575,7 @@ export default function Home() {
                     onClick={() => setPlaying((v) => !v)}
                   >
                     {playing ? <Pause /> : <Play />}
-                    <span>{playing ? "توقف" : "پخش"}</span>
+                    <span>{playing ? 'توقف' : 'پخش'}</span>
                   </button>
                   <button
                     data-gesture-target="Volume Up"
@@ -1569,7 +1586,7 @@ export default function Home() {
                   </button>
                   <button
                     data-gesture-target="Analytics"
-                    onClick={() => setTab("analytics")}
+                    onClick={() => setTab('analytics')}
                   >
                     <BarChart3 />
                     <span>تحلیل</span>
@@ -1601,7 +1618,7 @@ export default function Home() {
             </section>
           </>
         )}
-        {tab === "analytics" && (
+        {tab === 'analytics' && (
           <section className="dashboard-view">
             <div className="view-heading">
               <div>
@@ -1623,31 +1640,31 @@ export default function Home() {
             </div>
             <div className="metric-grid">
               {[
-                ["FPS", metrics.fps, metricSeries.fps, "#b8ff6a"],
+                ['FPS', metrics.fps, metricSeries.fps, '#b8ff6a'],
                 [
-                  "زمان پردازش",
+                  'زمان پردازش',
                   Math.round(metrics.inference),
                   metricSeries.latency,
-                  "#68d7ff",
+                  '#68d7ff',
                 ],
                 [
-                  "Latency",
+                  'Latency',
                   Math.round(metrics.latency),
                   metricSeries.latency,
-                  "#ffbd67",
+                  '#ffbd67',
                 ],
-                ["فریم‌ها", metrics.frames, [0, metrics.frames], "#c8a7ff"],
+                ['فریم‌ها', metrics.frames, [0, metrics.frames], '#c8a7ff'],
               ].map(([label, value, series, color]) => (
                 <article className="metric-card" key={String(label)}>
                   <small>{label}</small>
                   <strong>
-                    {Number(value).toLocaleString("fa-IR")}
+                    {Number(value).toLocaleString('fa-IR')}
                     <em>
-                      {label === "FPS"
-                        ? " fps"
-                        : label === "فریم‌ها"
-                          ? ""
-                          : " ms"}
+                      {label === 'FPS'
+                        ? ' fps'
+                        : label === 'فریم‌ها'
+                          ? ''
+                          : ' ms'}
                     </em>
                   </strong>
                   <MiniLine values={series as number[]} color={String(color)} />
@@ -1661,7 +1678,7 @@ export default function Home() {
                     <BarChart3 size={18} /> فراوانی حرکت‌ها
                   </span>
                   <small>
-                    {historyItems.length.toLocaleString("fa-IR")} رویداد
+                    {historyItems.length.toLocaleString('fa-IR')} رویداد
                   </small>
                 </div>
                 <div className="bar-chart">
@@ -1676,7 +1693,7 @@ export default function Home() {
                             }}
                           />
                         </div>
-                        <b>{count.toLocaleString("fa-IR")}</b>
+                        <b>{count.toLocaleString('fa-IR')}</b>
                       </div>
                     ))
                   ) : (
@@ -1717,7 +1734,7 @@ export default function Home() {
                     <dd>
                       {customModel
                         ? `${customModel.labels.length} کلاس`
-                        : "غیرفعال"}
+                        : 'غیرفعال'}
                     </dd>
                   </div>
                 </dl>
@@ -1747,7 +1764,7 @@ export default function Home() {
                         {item.screenshot && <Camera size={13} />}
                       </strong>
                       <span>{handFa(item.hand)}</span>
-                      <span>{item.fingerCount.toLocaleString("fa-IR")}</span>
+                      <span>{item.fingerCount.toLocaleString('fa-IR')}</span>
                       <span>
                         <i style={{ width: `${item.confidence * 100}%` }} />
                         <b>{Math.round(item.confidence * 100)}٪</b>
@@ -1764,7 +1781,7 @@ export default function Home() {
             </article>
           </section>
         )}
-        {tab === "studio" && (
+        {tab === 'studio' && (
           <section className="studio-view">
             <div className="view-heading">
               <div>
@@ -1799,8 +1816,8 @@ export default function Home() {
                   <Hand />
                   <span>
                     {hands[0]
-                      ? "دست آمادهٔ ثبت است"
-                      : "ابتدا تشخیص زنده را شروع کن"}
+                      ? 'دست آمادهٔ ثبت است'
+                      : 'ابتدا تشخیص زنده را شروع کن'}
                   </span>
                   <b>{hands[0]?.landmarks.length || 0}/21</b>
                 </div>
@@ -1834,7 +1851,7 @@ export default function Home() {
                         <Fingerprint />
                         {label}
                       </span>
-                      <b>{count.toLocaleString("fa-IR")} نمونه</b>
+                      <b>{count.toLocaleString('fa-IR')} نمونه</b>
                       <button
                         onClick={() =>
                           setSamples((rows) =>
@@ -1852,7 +1869,7 @@ export default function Home() {
                 </div>
                 <div className="dataset-footer">
                   <span>کل داده</span>
-                  <b>{samples.length.toLocaleString("fa-IR")} نمونه</b>
+                  <b>{samples.length.toLocaleString('fa-IR')} نمونه</b>
                 </div>
               </article>
               <article className="train-card">
@@ -1915,7 +1932,7 @@ export default function Home() {
                           ...customEvaluation.labels.map((predicted) => (
                             <span
                               key={`${actual}-${predicted}`}
-                              className={actual === predicted ? "hit" : ""}
+                              className={actual === predicted ? 'hit' : ''}
                             >
                               {customEvaluation.matrix[actual]?.[predicted] ||
                                 0}
@@ -1932,7 +1949,7 @@ export default function Home() {
                     <p>
                       <b>مدل فعال است</b>
                       <span>
-                        {customModel.labels.join("، ")} ·{" "}
+                        {customModel.labels.join('، ')} ·{' '}
                         {customModel.sampleCount} نمونه
                       </span>
                     </p>
@@ -1979,9 +1996,9 @@ export default function Home() {
               <button
                 onClick={() =>
                   downloadFile(
-                    "dastbin-dataset.json",
+                    'dastbin-dataset.json',
                     JSON.stringify({ version: 1, samples }, null, 2),
-                    "application/json",
+                    'application/json',
                   )
                 }
               >
@@ -1990,7 +2007,7 @@ export default function Home() {
             </article>
           </section>
         )}
-        {tab === "roadmap" && (
+        {tab === 'roadmap' && (
           <section className="roadmap-view">
             <div className="view-heading">
               <div>
@@ -2029,7 +2046,7 @@ export default function Home() {
                     {level.items.map((item, index) => (
                       <li
                         key={item}
-                        className={index < level.done ? "done" : ""}
+                        className={index < level.done ? 'done' : ''}
                       >
                         {index < level.done ? <Check /> : <Circle />}
                         {item}
@@ -2108,7 +2125,7 @@ export default function Home() {
                   onChange={(e) =>
                     setSettings((s) => ({
                       ...s,
-                      modelMode: e.target.value as Settings["modelMode"],
+                      modelMode: e.target.value as Settings['modelMode'],
                     }))
                   }
                 >
@@ -2123,7 +2140,7 @@ export default function Home() {
                   onChange={(e) =>
                     setSettings((s) => ({
                       ...s,
-                      gestureMode: e.target.value as Settings["gestureMode"],
+                      gestureMode: e.target.value as Settings['gestureMode'],
                     }))
                   }
                 >
@@ -2135,7 +2152,7 @@ export default function Home() {
             </div>
             <label className="range-field">
               <span>
-                Confidence Threshold{" "}
+                Confidence Threshold{' '}
                 <b>{Math.round(settings.threshold * 100)}٪</b>
               </span>
               <input
@@ -2153,11 +2170,11 @@ export default function Home() {
             </label>
             {(
               [
-                ["skeleton", "نمایش Skeleton"],
-                ["joints", "نمایش نقاط مفاصل"],
-                ["bbox", "نمایش Bounding Box"],
-                ["trail", "نمایش مسیر حرکت"],
-                ["mirror", "تصویر آینه‌ای"],
+                ['skeleton', 'نمایش Skeleton'],
+                ['joints', 'نمایش نقاط مفاصل'],
+                ['bbox', 'نمایش Bounding Box'],
+                ['trail', 'نمایش مسیر حرکت'],
+                ['mirror', 'تصویر آینه‌ای'],
               ] as const
             ).map(([key, label]) => (
               <label className="drawer-switch" key={key}>
