@@ -1,0 +1,45 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 520" role="img" aria-labelledby="title desc">
+  <title id="title">Dastbin AI</title>
+  <desc id="desc">Real-time hand vision, gesture recognition and local AI in the browser.</desc>
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#050b08"/>
+      <stop offset="0.55" stop-color="#0b1710"/>
+      <stop offset="1" stop-color="#07100b"/>
+    </linearGradient>
+    <radialGradient id="glow">
+      <stop offset="0" stop-color="#a4ff5f" stop-opacity=".28"/>
+      <stop offset="1" stop-color="#a4ff5f" stop-opacity="0"/>
+    </radialGradient>
+    <filter id="blur"><feGaussianBlur stdDeviation="18"/></filter>
+    <pattern id="grid" width="44" height="44" patternUnits="userSpaceOnUse">
+      <path d="M44 0H0V44" fill="none" stroke="#a4ff5f" stroke-opacity=".055"/>
+    </pattern>
+  </defs>
+  <rect width="1200" height="520" rx="28" fill="url(#bg)"/>
+  <rect width="1200" height="520" rx="28" fill="url(#grid)"/>
+  <circle cx="958" cy="255" r="230" fill="url(#glow)" filter="url(#blur)"/>
+  <g fill="none" stroke="#a4ff5f" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="940" cy="274" r="155" opacity=".16"/>
+    <circle cx="940" cy="274" r="116" opacity=".12"/>
+    <path d="M873 342c-17-35-21-76-10-113l17-61c4-14 17-22 29-18 11 4 17 16 14 29l-10 38 12-77c2-15 14-24 27-22 13 2 20 14 18 29l-9 68 15-60c4-14 16-21 28-18 12 4 18 17 14 31l-14 55 14-35c5-13 18-18 29-13 11 5 15 18 10 31l-24 62c-10 27-24 49-43 67-17 16-27 36-30 58" stroke-width="10"/>
+    <path d="M863 230c-8-11-20-14-30-7-11 8-12 23-3 35l43 58" stroke-width="10"/>
+    <g fill="#a4ff5f" stroke="none">
+      <circle cx="907" cy="151" r="7"/><circle cx="954" cy="119" r="7"/><circle cx="1007" cy="139" r="7"/><circle cx="1040" cy="180" r="7"/>
+      <circle cx="834" cy="227" r="7"/><circle cx="870" cy="316" r="7"/><circle cx="931" cy="389" r="7"/>
+    </g>
+  </g>
+  <g font-family="Inter,Segoe UI,Arial,sans-serif">
+    <text x="76" y="123" fill="#a4ff5f" font-size="20" font-weight="700" letter-spacing="5">HAND VISION LAB</text>
+    <text x="72" y="228" fill="#f4fff0" font-size="78" font-weight="800">Dastbin AI</text>
+    <text x="76" y="283" fill="#b8c5ba" font-size="25">Real-time gesture intelligence. Entirely in your browser.</text>
+    <g transform="translate(76 341)">
+      <rect width="185" height="52" rx="26" fill="#a4ff5f"/>
+      <text x="92" y="34" fill="#07100b" text-anchor="middle" font-size="18" font-weight="800">PRIVATE BY DESIGN</text>
+      <rect x="202" width="143" height="52" rx="26" fill="none" stroke="#405047"/>
+      <text x="274" y="34" fill="#dce7de" text-anchor="middle" font-size="18" font-weight="700">ON-DEVICE</text>
+      <rect x="362" width="123" height="52" rx="26" fill="none" stroke="#405047"/>
+      <text x="424" y="34" fill="#dce7de" text-anchor="middle" font-size="18" font-weight="700">OPEN SOURCE</text>
+    </g>
+  </g>
+</svg>

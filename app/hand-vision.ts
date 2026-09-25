@@ -9,7 +9,7 @@ export type RawResult = {
 
 export type HandSnapshot = {
   id: number;
-  handedness: "Left" | "Right" | "Unknown";
+  handedness: 'Left' | 'Right' | 'Unknown';
   confidence: number;
   gesture: string;
   rawGesture: string;
@@ -61,24 +61,24 @@ export const HAND_CONNECTIONS = [
   [19, 20],
 ] as const;
 
-export const fingerNames = ["شست", "اشاره", "میانی", "حلقه", "کوچک"];
+export const fingerNames = ['شست', 'اشاره', 'میانی', 'حلقه', 'کوچک'];
 
 export const gestureFa: Record<string, string> = {
-  None: "نامشخص",
-  Open_Palm: "کف دست باز",
-  Closed_Fist: "مشت بسته",
-  Thumb_Up: "شست بالا",
-  Thumb_Down: "شست پایین",
-  Victory: "علامت صلح",
-  Pointing_Up: "اشاره به بالا",
-  ILoveYou: "دوستت دارم",
-  OK: "علامت OK",
-  Pinch: "پینچ",
-  Wave: "دست تکان دادن",
-  Swipe_Left: "حرکت به چپ",
-  Swipe_Right: "حرکت به راست",
-  Swipe_Up: "حرکت به بالا",
-  Swipe_Down: "حرکت به پایین",
+  None: 'نامشخص',
+  Open_Palm: 'کف دست باز',
+  Closed_Fist: 'مشت بسته',
+  Thumb_Up: 'شست بالا',
+  Thumb_Down: 'شست پایین',
+  Victory: 'علامت صلح',
+  Pointing_Up: 'اشاره به بالا',
+  ILoveYou: 'دوستت دارم',
+  OK: 'علامت OK',
+  Pinch: 'پینچ',
+  Wave: 'دست تکان دادن',
+  Swipe_Left: 'حرکت به چپ',
+  Swipe_Right: 'حرکت به راست',
+  Swipe_Up: 'حرکت به بالا',
+  Swipe_Down: 'حرکت به پایین',
 };
 
 const dist = (a: Point, b: Point) =>
@@ -133,7 +133,7 @@ export function predictCustom(model: CustomModel | null, points: Point[]) {
   if (!model) return null;
   const vector = normalizedVector(points);
   if (!vector.length) return null;
-  let best = { label: "", distance: Infinity };
+  let best = { label: '', distance: Infinity };
   for (const label of model.labels) {
     const centroid = model.centroids[label];
     const distance = Math.sqrt(
@@ -156,9 +156,9 @@ export function analyzeHands(
 ): HandSnapshot[] {
   return result.landmarks.map((points, index) => {
     const handedness = (result.handedness[index]?.[0]?.categoryName ||
-      "Unknown") as HandSnapshot["handedness"];
+      'Unknown') as HandSnapshot['handedness'];
     const raw = result.gestures[index]?.[0] || {
-      categoryName: "None",
+      categoryName: 'None',
       score: 0,
     };
     const wrist = points[0],
@@ -188,18 +188,18 @@ export function analyzeHands(
     const dx = last.x - first.x,
       dy = last.y - first.y;
     const speed = (Math.hypot(dx, dy) / elapsed) * 1000;
-    let direction = "ثابت";
+    let direction = 'ثابت';
     if (speed > 0.11)
       direction =
         Math.abs(dx) > Math.abs(dy)
           ? dx > 0
-            ? "چپ"
-            : "راست"
+            ? 'چپ'
+            : 'راست'
           : dy > 0
-            ? "پایین"
-            : "بالا";
-    let gesture = raw.categoryName || "None";
-    if (pinch > 0.72) gesture = fingerCount >= 3 ? "OK" : "Pinch";
+            ? 'پایین'
+            : 'بالا';
+    let gesture = raw.categoryName || 'None';
+    if (pinch > 0.72) gesture = fingerCount >= 3 ? 'OK' : 'Pinch';
     const recent = trail.filter((item) => now - item.time < 650);
     if (recent.length > 8) {
       let reversals = 0,
@@ -214,27 +214,27 @@ export function analyzeHands(
       const span =
         Math.max(...recent.map((p) => p.x)) -
         Math.min(...recent.map((p) => p.x));
-      if (reversals >= 2 && span > 0.12 && fingerCount >= 3) gesture = "Wave";
+      if (reversals >= 2 && span > 0.12 && fingerCount >= 3) gesture = 'Wave';
     }
     if (speed > 0.5 && elapsed < 1150)
       gesture =
         Math.abs(dx) > Math.abs(dy)
           ? dx > 0
-            ? "Swipe_Left"
-            : "Swipe_Right"
+            ? 'Swipe_Left'
+            : 'Swipe_Right'
           : dy > 0
-            ? "Swipe_Down"
-            : "Swipe_Up";
+            ? 'Swipe_Down'
+            : 'Swipe_Up';
     const custom = predictCustom(customModel, points);
-    if (custom && (gesture === "None" || raw.score < 0.62))
+    if (custom && (gesture === 'None' || raw.score < 0.62))
       gesture = `custom:${custom.label}`;
     return {
       id: index,
       handedness,
       confidence:
-        custom && gesture.startsWith("custom:") ? custom.confidence : raw.score,
+        custom && gesture.startsWith('custom:') ? custom.confidence : raw.score,
       gesture,
-      rawGesture: raw.categoryName || "None",
+      rawGesture: raw.categoryName || 'None',
       landmarks: points,
       fingers,
       fingerCount,
@@ -248,18 +248,18 @@ export function analyzeHands(
 }
 
 export function labelForGesture(value: string) {
-  return value.startsWith("custom:")
+  return value.startsWith('custom:')
     ? value.slice(7)
-    : gestureFa[value] || value.replaceAll("_", " ");
+    : gestureFa[value] || value.replaceAll('_', ' ');
 }
 
 export function downloadFile(
   name: string,
   content: string,
-  type = "text/plain;charset=utf-8",
+  type = 'text/plain;charset=utf-8',
 ) {
   const url = URL.createObjectURL(new Blob([content], { type }));
-  const anchor = document.createElement("a");
+  const anchor = document.createElement('a');
   anchor.href = url;
   anchor.download = name;
   anchor.click();

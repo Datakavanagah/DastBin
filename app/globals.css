@@ -1,5 +1,5 @@
-@import url("https://fonts.googleapis.com/css2?family=Vazirmatn:wght@400;500;600;700;800&display=swap");
-@import "tailwindcss";
+@import url('https://fonts.googleapis.com/css2?family=Vazirmatn:wght@400;500;600;700;800&display=swap');
+@import 'tailwindcss';
 
 * {
   box-sizing: border-box;
@@ -543,7 +543,7 @@ select:focus-visible {
   position: relative;
 }
 .toolbar-toggles label > span:after {
-  content: "";
+  content: '';
   position: absolute;
   width: 11px;
   height: 11px;
@@ -761,7 +761,7 @@ select:focus-visible {
   position: relative;
 }
 .master-switch > span:after {
-  content: "";
+  content: '';
   position: absolute;
   width: 17px;
   height: 17px;
@@ -1461,7 +1461,7 @@ select:focus-visible {
   position: relative;
 }
 .drawer-switch i:after {
-  content: "";
+  content: '';
   position: absolute;
   width: 16px;
   height: 16px;
